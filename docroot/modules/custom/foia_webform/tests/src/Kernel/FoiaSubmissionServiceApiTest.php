@@ -19,11 +19,18 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
    */
   public static $modules = [
     'system',
+    'node',
+    'field',
     'user',
     'webform',
     'webform_template',
     'foia_webform',
   ];
+
+  /**
+   * @var
+   */
+  private $webform;
 
   /**
    * {@inheritdoc}
@@ -32,8 +39,19 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     parent::setUp();
 
     $this->installConfig(['system', 'webform', 'webform_template']);
+    $this->installSchema('user', 'users_data');
+    $this->installEntitySchema('node');
+    $this->installEntitySchema('user');
 
-    // Create webform.
+    // Mock a webform.
+/*    $this->webform = $this->getMockBuilder('\Drupal\webform\Entity\Webform')
+      ->disableOriginalConstructor()
+      ->setMethods(['id'])
+      ->getMock();
+    $this->webform->expects($this->once())
+      ->method('id')
+      ->will($this->returnValue('a_test_webform'));*/
+
     $webform = Webform::create(['id' => 'a_test_webform']);
     $webform->set('foia_template', [
       '#type' => 'checkbox',
@@ -54,9 +72,9 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
 
   public function testsendSubmissionToComponent() {
 
-    $template = $webform->get('foia_template')->getValue();
+    $webformId = $this->webform->id();
 
-    $this->assertEquals('foia_template', $template)
+    $this->assertEquals('a_test_webform', $webformId);
 
   }
 
