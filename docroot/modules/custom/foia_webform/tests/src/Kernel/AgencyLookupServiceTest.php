@@ -147,10 +147,11 @@ class AgencyLookupServiceTest extends KernelTestBase {
     $tids = $query->execute();
 
     $term = Term::load($tids[1]);
-print_r('tax man');
-print_r($term);
+/*print_r('tax man');
+print_r($term);*/
     $name = $term->label();
-
+/*print_r('taxonomy term name: ');
+print_r($name);*/
     $etm = \Drupal::entityTypeManager();
 
     $lookup = new AgencyLookupService($etm);
@@ -158,22 +159,30 @@ print_r($term);
     Node::create([
       'type' => 'agency_component',
       'title' => t('A Test Agency Component Associated with The Agency Agency'),
-      'field_agency' => ['target_id' => $term->label()],
-    ]);
+      'field_agency' => ['target_id' => 1],
+      'field_portal_submission_format' => 'api',
+      'field_submission_api' => 'http://atest.com',
+      'field_request_submission_form' => ['target_id' => $webformId],
+    ])->save();
 
     $query = \Drupal::entityQuery('node')
-      ->condition('field_agency', 'A Test Agency Component Associated with The Agency Agency');
+      ->condition('field_agency', 1);
     $nids = $query->execute();
-print_r($nids);
-    $node = Node::load($nids[1]);
+    /*print_r(' | nids: ');
+print_r($nids);*/
+    $node = Node::load($nids[2]);
 //print_r($node);
     $return = $lookup->getAgencyFromComponent($node);
 
    // print_r($name);
     //print_r($return);
-    //$title = $return->label();
+    $something_taxonomy = $return->id();
+    print_r($something_taxonomy);
 
-    $this->assertEquals($name, $return);
+/*    $title = $return->getName();
+print_r($title);*/
+
+    //$this->assertEquals($name, $return);
 
   }
 
