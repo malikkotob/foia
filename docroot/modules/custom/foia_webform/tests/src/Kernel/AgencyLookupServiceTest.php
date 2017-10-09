@@ -9,6 +9,8 @@ use Drupal\node\Entity\NodeType;
 use Drupal\node\Entity\Node;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\field\Entity\FieldConfig;
+use Drupal\taxonomy\Entity\Term;
+use Drupal\taxonomy\Entity\Vocabulary;
 
 /**
  * Class AgencyLookupServiceTest.
@@ -33,6 +35,10 @@ class AgencyLookupServiceTest extends KernelTestBase {
     'entity_reference',
     'menu_ui',
     'field_permissions',
+    'taxonomy',
+    'filter',
+    'text',
+    'views',
   ];
 
   /**
@@ -41,10 +47,11 @@ class AgencyLookupServiceTest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->installConfig(['system'/*, 'webform', 'webform_template'*/]);
+    $this->installConfig(['system', 'taxonomy']);
     $this->installSchema('user', 'users_data');
     $this->installEntitySchema('node');
     $this->installEntitySchema('user');
+    $this->installEntitySchema('taxonomy_term');
 
   }
 
@@ -53,6 +60,7 @@ class AgencyLookupServiceTest extends KernelTestBase {
    */
   public function testAgencyLookupService() {
 
+    // Tests getComponentFromWebform.
     $webform = $this->getMockBuilder('Drupal\webform\Entity\Webform')
       ->disableOriginalConstructor()
       ->setMethods(['id'])
@@ -80,6 +88,7 @@ class AgencyLookupServiceTest extends KernelTestBase {
     $node_type = NodeType::create($node_type_values);
     $node_type->save();
 
+    // Adds "Request submission form" field.
     // @todo get path from variable.
     $path = '/var/www/dojfoia/config/default';
     $yml = yaml_parse(file_get_contents($path . '/field.storage.node.field_request_submission_form.yml'));
@@ -114,6 +123,57 @@ class AgencyLookupServiceTest extends KernelTestBase {
 
     // Title is the same as the one returned from getComponentByWebform.
     $this->assertEquals($name, $title);
+
+    // Tests getAgencyFromComponent.
+
+    // Adds Agency Field.
+    $yml = yaml_parse(file_get_contents($path . '/field.storage.node.field_agency.yml'));
+    FieldStorageConfig::create($yml)->save();
+    $yml = yaml_parse(file_get_contents($path . '/field.field.node.agency_component.field_agency.yml'));
+    FieldConfig::create($yml)->save();
+
+    // Adds Agency Taxonomy Vocabulary.
+    $yml = yaml_parse(file_get_contents($path . '/taxonomy.vocabulary.agency.yml'));
+    Vocabulary::create($yml)->save();
+
+    // Adds Agency Taxonomy Term.
+    Term::create([
+      'name' => 'A Test Taxonomy Term',
+      'vid' => 'agency',
+    ])->save();
+
+    $query = \Drupal::entityQuery('taxonomy_term')
+      ->condition('name', 'A Test Taxonomy Term');
+    $tids = $query->execute();
+
+    $term = Term::load($tids[1]);
+print_r('tax man');
+print_r($term);
+    $name = $term->label();
+
+    $etm = \Drupal::entityTypeManager();
+
+    $lookup = new AgencyLookupService($etm);
+
+    Node::create([
+      'type' => 'agency_component',
+      'title' => t('A Test Agency Component Associated with The Agency Agency'),
+      'field_agency' => ['target_id' => $term->label()],
+    ]);
+
+    $query = \Drupal::entityQuery('node')
+      ->condition('field_agency', 'A Test Agency Component Associated with The Agency Agency');
+    $nids = $query->execute();
+print_r($nids);
+    $node = Node::load($nids[1]);
+//print_r($node);
+    $return = $lookup->getAgencyFromComponent($node);
+
+   // print_r($name);
+    //print_r($return);
+    //$title = $return->label();
+
+    $this->assertEquals($name, $return);
 
   }
 
