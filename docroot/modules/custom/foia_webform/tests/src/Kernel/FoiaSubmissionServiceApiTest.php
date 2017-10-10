@@ -8,73 +8,63 @@ use Drupal\webform\Entity\Webform;
 /**
  * Class FoiaSubmissionServiceApiTest.
  *
+ * Tests the FoiaSubmissionServiceApi.
+ *
  * @package Drupal\Tests\foia_webform\Kernel
  */
 class FoiaSubmissionServiceApiTest extends KernelTestBase {
 
   /**
-   * Modules to install.
+   * Test webform to submit against.
+   *
+   * @var  \Drupal\webform\WebformInterface
+   */
+  protected $webform;
+
+  /**
+   * Test webform submission.
+   *
+   * @var  \Drupal\webform\WebformSubmissionInterface
+   */
+  protected $webformSubmission;
+
+  /**
+   * Test agency component we're submitting to.
+   *
+   * @var \Drupal\node\NodeInterface
+   */
+  protected $agencyComponent;
+
+  /**
+   * Modules to enable.
    *
    * @var array
    */
-  public static $modules = [
-    'system',
-    'node',
-    'field',
-    'user',
-    'webform',
-    'webform_template',
-    'foia_webform',
-  ];
-
-  /**
-   * @var
-   */
-  private $webform;
+  public static $modules = ['webform_template', 'webform', 'system', 'user', 'foia_webform'];
 
   /**
    * {@inheritdoc}
    */
   protected function setUp() {
     parent::setUp();
+    $this->installConfig(['webform', 'webform_template', 'foia_webform']);
+    $this->installEntitySchema('webform_submission');
 
-    $this->installConfig(['system', 'webform', 'webform_template']);
-    $this->installSchema('user', 'users_data');
-    $this->installEntitySchema('node');
-    $this->installEntitySchema('user');
+    // Creates webform and specifies to use the template fields.
+    $webformWithTemplate = Webform::create(['id' => 'webform_with_template']);
+    $webformWithTemplate->set('foia_template', 1);
+    $webformWithTemplate->save();
+    $this->webform = $webformWithTemplate;
 
-    // Mock a webform.
-/*    $this->webform = $this->getMockBuilder('\Drupal\webform\Entity\Webform')
-      ->disableOriginalConstructor()
-      ->setMethods(['id'])
-      ->getMock();
-    $this->webform->expects($this->once())
-      ->method('id')
-      ->will($this->returnValue('a_test_webform'));*/
-
-    $webform = Webform::create(['id' => 'a_test_webform']);
-    $webform->set('foia_template', [
-      '#type' => 'checkbox',
-      '#title' => t("Use FOIA Agency template"),
-      '#disabled' => TRUE,
-      '#default_value' => 'foia_template',
-      '#value' => 'foia_template',
-    ]);
-    $webform->save();
-
-    // Create Agency Component.
-
-
-    // Create Webform Submission.
-
-
+    // Check creating a submission with default data.
+    $webformSubmission = WebformSubmission::create(['webform_id' => $this->webform->id(), 'data' => ['custom' => 'value']]);
+    $webformSubmission->save();
   }
 
-  public function testsendSubmissionToComponent() {
-
-    $webformId = $this->webform->id();
-
-    $this->assertEquals('a_test_webform', $webformId);
+  /**
+   * Tests receiving an error response from an agency component.
+   */
+  public function testErrorResponseFromComponent() {
 
   }
 
