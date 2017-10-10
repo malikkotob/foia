@@ -150,6 +150,11 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     ];
     $this->setupHttpClientErrorMock($responseContents, 404);
     $this->submissionServiceApi = new FoiaSubmissionServiceApi($this->httpClient, $this->agencyLookupService, $this->logger);
+    $validSubmission = $this->submissionServiceApi->sendSubmissionToComponent($this->webformSubmission, $this->webform, $this->agencyComponent);
+    $errorMessage = $this->submissionServiceApi->getSubmissionErrors();
+    $this->assertEquals(404, $errorMessage['http_code']);
+    $this->assertEquals($responseContents['message'], $errorMessage['message']);
+
   }
 
   /**
