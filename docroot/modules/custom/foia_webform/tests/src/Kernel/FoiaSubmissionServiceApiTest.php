@@ -3,8 +3,10 @@
 namespace Drupal\Tests\foia_webform\Kernel;
 
 use Drupal\Component\Serialization\Json;
+use Drupal\foia_webform\FoiaSubmissionServiceApi;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\NodeTypeInterface;
+use Drupal\taxonomy\Entity\Vocabulary;
 use Drupal\webform\Entity\Webform;
 use Drupal\webform\Entity\WebformSubmission;
 use Drupal\field\Entity\FieldConfig;
@@ -17,6 +19,8 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Drupal\foia_webform\AgencyLookupService;
+use Drupal\taxonomy\Entity\Term;
 
 /**
  * Class FoiaSubmissionServiceApiTest.
@@ -26,6 +30,13 @@ use GuzzleHttp\Psr7\Response;
  * @package Drupal\Tests\foia_webform\Kernel
  */
 class FoiaSubmissionServiceApiTest extends KernelTestBase {
+
+  /**
+   * Test agency.
+   *
+   * @var \Drupal\taxonomy\Entity\Term
+   */
+  protected $agency;
 
   /**
    * Test webform to submit against.
@@ -59,6 +70,21 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
   protected $agencyLookupService;
 
   /**
+   * Logger service.
+   *
+   * @var \Psr\Log\LoggerInterface|\PHPUnit_Framework_MockObject_MockObject
+   */
+  protected $logger;
+
+  /**
+   * Submission Service Api.
+   *
+   * @var \Drupal\foia_webform\FoiaSubmissionServiceApi
+   */
+  protected $submissionServiceApi;
+
+
+  /**
    * Modules to enable.
    *
    * @var array
@@ -70,7 +96,10 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     'user',
     'foia_webform',
     'node',
-    'field'
+    'field',
+    'taxonomy',
+    'field_permissions',
+    'text',
   ];
 
   /**
@@ -82,6 +111,7 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     $this->installEntitySchema('webform_submission');
     $this->installEntitySchema('user');
     $this->installEntitySchema('node');
+    $this->installEntitySchema('taxonomy_term');
 
     // Creates webform and specifies to use the template fields.
     $webformWithTemplate = Webform::create(['id' => 'webform_with_template']);
@@ -94,18 +124,37 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     $webformSubmission->save();
     $this->webformSubmission = $webformSubmission;
 
+    Vocabulary::create([
+      'name' => 'Agency',
+      'vid' => 'agency',
+    ])->save();
+    $agency = Term::create([
+      'name' => 'Department of Testing',
+      'vid' => 'agency',
+    ]);
+    $this->agency = $agency->save();
+
     $this->setupAgencyComponent();
-    $this->setupHttpClientMock();
     $this->setupAgencyLookupServiceMock();
+    $this->setupLoggerMock();
   }
 
   /**
    * Tests receiving an error response from an agency component.
    */
   public function testErrorResponseFromComponent() {
-
+    $responseContents = [
+      'code' => 'A234',
+      'message' => 'agency component not found',
+      'description' => 'description of the error that is specific to the case management system',
+    ];
+    $this->setupHttpClientErrorMock($responseContents, 404);
+    $this->submissionServiceApi = new FoiaSubmissionServiceApi($this->httpClient, $this->agencyLookupService, $this->logger);
   }
 
+  /**
+   *
+   */
   protected function setupAgencyComponent() {
     // Adds Agency Component Content type.
     $agencyComponentTypeDefinition = [
@@ -120,25 +169,48 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
   }
 
   protected function addFieldsToComponentType(NodeTypeInterface $agencyComponentType) {
-    $this->addFieldToComponentType('field_request_submission_form', 'entity_reference', 'Request Submission Form');
-    $this->addFieldToComponentType('field_submission_api', 'uri', 'Field Submission Api');
+//    $this->addFieldToComponentType('field_request_submission_form', 'entity_reference', 'Request Submission Form');
+//    $this->addFieldToComponentType('field_submission_api', 'uri', 'Field Submission Api');
+//    $this->addFieldToComponentType('field_agency', 'entity_reference', 'Agency', 'taxonomy_term');
+    $this->addFieldToComponentType('field_request_submission_form');
+    $this->addFieldToComponentType('field_submission_api');
+    $this->addFieldToComponentType('field_agency');
   }
 
-  protected function addFieldToComponentType($fieldName, $fieldType, $fieldLabel) {
-    $fieldStorage = FieldStorageConfig::create([
-      'field_name' => $fieldName,
-      'type' => $fieldType,
-      'entity_type' => 'node',
-    ]);
-    $fieldStorage->save();
+  protected function addFieldToComponentType($fieldName) {
+//    if ($targetType) {
+//      $fieldStorage = FieldStorageConfig::create([
+//        'field_name' => $fieldName,
+//        'type' => $fieldType,
+//        'entity_type' => 'node',
+//        'settings' => [
+//          'target_type' => $targetType,
+//        ],
+//      ]);
+//    }
+//    else {
+//      $fieldStorage = FieldStorageConfig::create([
+//        'field_name' => $fieldName,
+//        'type' => $fieldType,
+//        'entity_type' => 'node',
+//      ]);
+//    }
+//    $fieldStorage->save();
+//
+//    $field = FieldConfig::create([
+//      'field_name' => $fieldName,
+//      'entity_type' => 'node',
+//      'bundle' => 'agency_component',
+//      'label' => $fieldLabel,
+//    ]);
+//    $field->save();
 
-    $field = FieldConfig::create([
-      'field_name' => $fieldName,
-      'entity_type' => 'node',
-      'bundle' => 'agency_component',
-      'label' => $fieldLabel,
-    ]);
-    $field->save();
+    // Adds field.
+    $path = '/var/www/dojfoia/config/default';
+    $yml = yaml_parse(file_get_contents($path . "/field.storage.node.{$fieldName}.yml"));
+    FieldStorageConfig::create($yml)->save();
+    $yml = yaml_parse(file_get_contents($path . "/field.field.node.agency_component.{$fieldName}.yml"));
+    FieldConfig::create($yml)->save();
   }
 
   protected function createAgencyComponentNode() {
@@ -150,21 +222,20 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
       'field_portal_submission_format' => 'api',
       'field_submission_api' => 'http://atest.com',
       'field_request_submission_form' => [
-        'target_id' => $this->webform->id()
+        'target_id' => $this->webform->id(),
       ],
+      'field_agency' => [
+        'target_id' => $this->agency->id(),
+      ]
     ]);
     $agencyComponent->save();
     $this->agencyComponent = $agencyComponent;
   }
 
-  protected function setupHttpClientMock() {
-    $testAgencyErrorResponse = Json::encode([
-      'code' => 'A234',
-      'message' => 'agency component not found',
-      'description' => 'description of the error that is specific to the case management system',
-    ]);
+  protected function setupHttpClientErrorMock(array $responseContents, $responseStatusCode) {
+    $testAgencyErrorResponse = Json::encode($responseContents);
     $guzzleMock = new MockHandler([
-      new RequestException("Error communicating with component", new Request('POST', 'test'), new Response(404, [], $testAgencyErrorResponse))
+      new RequestException("Error communicating with component", new Request('POST', 'test'), new Response($responseStatusCode, [], $testAgencyErrorResponse))
     ]);
 
     $guzzleHandlerMock = HandlerStack::create($guzzleMock);
@@ -174,6 +245,10 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
   protected function setupAgencyLookupServiceMock() {
     $entityTypeManager = \Drupal::entityTypeManager();
     $this->agencyLookupService = new AgencyLookupService($entityTypeManager);
+  }
+
+  protected function setupLoggerMock() {
+    $this->logger = $this->getMock('\Psr\Log\LoggerInterface');
   }
 
 }
