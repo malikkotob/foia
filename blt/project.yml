@@ -71,5 +71,5 @@ phpunit:
   -
     config: ${repo.root}/tests/phpunit/phpunit.xml
     path: ${docroot}/modules/custom/foia_webform
-    class: WebformTemplateControllerTest
-    file: tests/src/Kernel/WebformTemplateControllerTest.php
+    class: FoiaSubmissionServiceApiTest
+    file: tests/src/Kernel/FoiaSubmissionServiceApiTest.php
