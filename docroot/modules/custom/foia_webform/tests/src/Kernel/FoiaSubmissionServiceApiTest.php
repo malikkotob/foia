@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\foia_webform\Kernel;
 
+use Drupal\Component\Serialization\Json;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\node\NodeTypeInterface;
 use Drupal\webform\Entity\Webform;
@@ -10,6 +11,12 @@ use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\node\Entity\NodeType;
 use Drupal\node\Entity\Node;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 
 /**
  * Class FoiaSubmissionServiceApiTest.
@@ -40,6 +47,16 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
    * @var \Drupal\node\NodeInterface
    */
   protected $agencyComponent;
+
+  /**
+   * @var \GuzzleHttp\ClientInterface
+   */
+  protected $httpClient;
+
+  /**
+   * @var \Drupal\foia_webform\AgencyLookupServiceInterface
+   */
+  protected $agencyLookupService;
 
   /**
    * Modules to enable.
@@ -77,6 +94,19 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     $webformSubmission->save();
     $this->webformSubmission = $webformSubmission;
 
+    $this->setupAgencyComponent();
+    $this->setupHttpClientMock();
+    $this->setupAgencyLookupServiceMock();
+  }
+
+  /**
+   * Tests receiving an error response from an agency component.
+   */
+  public function testErrorResponseFromComponent() {
+
+  }
+
+  protected function setupAgencyComponent() {
     // Adds Agency Component Content type.
     $agencyComponentTypeDefinition = [
       'type' => 'agency_component',
@@ -87,13 +117,6 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     $agencyComponentType->save();
     $this->addFieldsToComponentType($agencyComponentType);
     $this->createAgencyComponentNode();
-  }
-
-  /**
-   * Tests receiving an error response from an agency component.
-   */
-  public function testErrorResponseFromComponent() {
-
   }
 
   protected function addFieldsToComponentType(NodeTypeInterface $agencyComponentType) {
@@ -132,6 +155,25 @@ class FoiaSubmissionServiceApiTest extends KernelTestBase {
     ]);
     $agencyComponent->save();
     $this->agencyComponent = $agencyComponent;
+  }
+
+  protected function setupHttpClientMock() {
+    $testAgencyErrorResponse = Json::encode([
+      'code' => 'A234',
+      'message' => 'agency component not found',
+      'description' => 'description of the error that is specific to the case management system',
+    ]);
+    $guzzleMock = new MockHandler([
+      new RequestException("Error communicating with component", new Request('POST', 'test'), new Response(404, [], $testAgencyErrorResponse))
+    ]);
+
+    $guzzleHandlerMock = HandlerStack::create($guzzleMock);
+    $this->httpClient = new Client(['handler' => $guzzleHandlerMock]);
+  }
+
+  protected function setupAgencyLookupServiceMock() {
+    $entityTypeManager = \Drupal::entityTypeManager();
+    $this->agencyLookupService = new AgencyLookupService($entityTypeManager);
   }
 
 }
