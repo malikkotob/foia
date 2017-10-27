@@ -5,9 +5,11 @@ namespace Drupal\foia_webform\Plugin\QueueWorker;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Queue\QueueWorkerBase;
 use Drupal\foia_request\Entity\FoiaRequest;
+use Drupal\foia_request\Entity\FoiaRequestInterface;
 use Drupal\foia_webform\AgencyLookupServiceInterface;
 use Drupal\foia_webform\FoiaSubmissionServiceFactoryInterface;
 use Drupal\node\Entity\Node;
+use Drupal\webform\Entity\WebformSubmission;
 use Drupal\webform\WebformSubmissionStorageInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -75,6 +77,27 @@ class FoiaSubmissionQueueWorker extends QueueWorkerBase implements ContainerFact
 
     // Submit the form values to the Agency Component.
     $validSubmissionResponse = $submissionService->sendRequestToComponent($foiaRequest, $agencyComponent);
+
+    if ($validSubmissionResponse) {
+      $foiaRequest->setRequestStatus(FoiaRequestInterface::STATUS_SUBMITTED);
+      $caseManagementId = isset($validSubmissionResponse['id']) ? $validSubmissionResponse['id'] : '';
+      $caseManagementStatusTrackingNumber = isset($validSubmissionResponse['status_tracking_number']) ? $validSubmissionResponse['status_tracking_number'] : '';
+      if ($caseManagementId) {
+        $foiaRequest->set('field_case_management_id', $caseManagementId);
+      }
+      if ($caseManagementStatusTrackingNumber) {
+        $foiaRequest->set('field_tracking_number', $caseManagementStatusTrackingNumber);
+      }
+      $webformSubmissionId = $foiaRequest->get('field_webform_submission_id')->value;
+      $webformSubmission = WebformSubmission::load($webformSubmissionId);
+      $webformSubmission->delete();
+    }
+    else {
+      $foiaRequest->setRequestStatus(FoiaRequestInterface::STATUS_FAILED);
+      $invalidSubmissionInfo = $submissionService->getSubmissionErrors();
+
+
+    }
   }
 
 }
