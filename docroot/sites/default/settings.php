@@ -371,13 +371,13 @@ $settings['update_free_access'] = FALSE;
  * Be aware, however, that it is likely that this would allow IP
  * address spoofing unless more advanced precautions are taken.
  */
-# $settings['reverse_proxy'] = TRUE;
+$settings['reverse_proxy'] = TRUE;
 
 /**
  * Specify every reverse proxy IP address in your environment.
  * This setting is required if $settings['reverse_proxy'] is TRUE.
  */
-# $settings['reverse_proxy_addresses'] = array('a.b.c.d', ...);
+$settings['reverse_proxy_addresses'] = ['54.208.160.112', '54.208.160.151',];
 
 /**
  * Set this value if your proxy server sends the client IP in a header
@@ -733,6 +733,12 @@ $settings['container_yamls'][] = $app_root . '/' . $site_path . '/services.yml';
  * will allow the site to run off of all variants of example.com and
  * example.org, with all subdomains included.
  */
+
+$settings['trusted_host_patterns'] = [
+  '^foia\.gov$',
+  '^.+\.foia\.gov$',
+//  '^local\.dojfoia\.gov$',
+];
 
 /**
  * The default list of directories that will be ignored by Drupal's file API.
