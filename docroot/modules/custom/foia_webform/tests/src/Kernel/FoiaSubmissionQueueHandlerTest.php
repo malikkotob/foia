@@ -182,11 +182,11 @@ class FoiaSubmissionServiceQueueHandlerTest extends KernelTestBase {
 
     $webformSubmissionData = [
       'request_description' => 'show me the info!',
-      'attachments_supporting_documentation' => $file->id(),
+      'attachments_supporting_documentation' => [$file->id()],
     ];
 
     $webformSubmission = WebformSubmission::create([
-      'webform_id' => $this->webform->id(),
+      'webform_id' => $webform->id(),
       'data' => $webformSubmissionData,
     ]);
     $webformSubmission->save();
