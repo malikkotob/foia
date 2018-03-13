@@ -1,2 +1,52 @@
-# This is a placeholder file used to track when foia.aliases.drushrc.php was converted.
-# If you delete foia.aliases.drushrc.php, then you may delete this file.
+local:
+  host: local-api.foia.doj.gov
+  root: /var/www/dojfoia/docroot
+  uri: local-api.foia.doj.gov
+  user: vagrant
+  ssh: { options: '-o PasswordAuthentication=no -i $HOME/.vagrant.d/insecure_private_key' }
+dev:
+  root: /var/www/html/foia.dev/docroot
+  uri: dev-admin.foia.gov
+  host: staging-27300.prod.hosting.acquia.com
+  options:
+    ac-env: dev
+    ac-realm: prod
+    ac-site: foia
+  paths:
+    drush-script: drush9
+  user: foia.dev
+dev-livedev:
+  options:
+    parent: '@foia.dev'
+  root: /mnt/gfs/foia.dev/livedev/docroot
+test:
+  root: /var/www/html/foia.test/docroot
+  uri: stg-admin.foia.gov
+  host: staging-27300.prod.hosting.acquia.com
+  options:
+    ac-env: test
+    ac-realm: prod
+    ac-site: foia
+  paths:
+    drush-script: drush9
+  user: foia.test
+  command:
+    sql:
+      sync:
+        options:
+          no-dump: true
+test-livedev:
+  options:
+    parent: '@foia.test'
+  root: /mnt/gfs/foia.test/livedev/docroot
+prod:
+  root: /var/www/html/foia.prod/docroot
+  uri: admin.foia.gov
+  host: web-27294.prod.hosting.acquia.com
+  options:
+    ac-env: prod
+    ac-realm: prod
+    ac-site: foia
+  paths:
+    drush-script: drush9
+  user: foia.prod
