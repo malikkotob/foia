@@ -46,7 +46,7 @@ layout_discovery: 8.4.5
 lightning_core: 1.0.0-rc1
 lightning_landing_page: 1.0.0-rc1
 lightning_layout: 1.0.0-rc1
-lightning_media: 1.0.0-rc2
+lightning_media: 2.0.0
 lightning_media_document: 1.0.0-rc2
 lightning_media_image: 1.0.0-rc2
 lightning_media_instagram: 1.0.0-rc2
