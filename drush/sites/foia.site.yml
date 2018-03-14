@@ -1,6 +1,6 @@
 dev:
   root: /var/www/html/foia.dev/docroot
-  uri: foiadev.prod.acquia-sites.com
+  uri: dev-admin.foia.gov
   host: staging-27300.prod.hosting.acquia.com
   user: foia.dev
   options:
@@ -15,7 +15,7 @@ dev-livedev:
   root: /mnt/gfs/foia.dev/livedev/docroot
 test:
   root: /var/www/html/foia.test/docroot
-  uri: foiastg.prod.acquia-sites.com
+  uri: stg-admin.foia.gov
   host: staging-27300.prod.hosting.acquia.com
   user: foia.test
   options:
@@ -30,6 +30,6 @@ test-livedev:
   root: /mnt/gfs/foia.test/livedev/docroot
 prod:
   root: /var/www/html/foia.prod/docroot
-  uri: foia.prod.acquia-sites.com
+  uri: admin.foia.gov
   host: web-27294.prod.hosting.acquia.com
   user: foia.prod
